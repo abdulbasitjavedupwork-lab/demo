@@ -8,6 +8,6 @@ public class RestController {
     @GetMapping("/")
     public ResponseEntity<String> sayGi()
     {
-        return ResponseEntity.ok("Hello Rashone");
+        return ResponseEntity.ok("Hello Rashone, Good Morning");
     }
 }
