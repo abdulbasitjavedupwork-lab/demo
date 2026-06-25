@@ -1,0 +1,35 @@
+# Version control
+.git/
+.gitignore
+.gitattributes
+
+# IDE / editor files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+*.swp
+*.swo
+
+# Build output — Maven builds inside the container; local target/ is not needed
+target/
+
+# CI / workflow definitions
+.github/
+
+# Documentation
+*.md
+HELP.md
+
+# Secrets and environment files — never bake these in
+.env
+.env.*
+*.pem
+*.key
+*.crt
+secrets/
+
+# OS artefacts
+.DS_Store
+Thumbs.db
