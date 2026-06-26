@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rashone · Good Morning ☀️</title>
+  <style>
+    :root {
+      --glass: rgba(255, 255, 255, 0.12);
+      --glass-brd: rgba(255, 255, 255, 0.25);
+      --ink: #ffffff;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+      color: var(--ink);
+      min-height: 100%;
+      background: linear-gradient(-45deg, #ff6b6b, #f06595, #845ef7, #5c7cfa, #22b8cf, #f59f00);
+      background-size: 400% 400%;
+      animation: drift 18s ease infinite;
+      overflow-x: hidden;
+    }
+    @keyframes drift {
+      0%   { background-position: 0% 50%; }
+      50%  { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 28px 22px 60px; }
+
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 20px; border-radius: 16px;
+      background: var(--glass); backdrop-filter: blur(10px);
+      border: 1px solid var(--glass-brd);
+    }
+    nav .brand { font-weight: 800; letter-spacing: .5px; font-size: 1.15rem; }
+    nav .brand span { opacity: .85; font-weight: 500; }
+    nav a {
+      color: var(--ink); text-decoration: none; font-weight: 600;
+      padding: 8px 14px; border-radius: 10px; transition: background .2s;
+    }
+    nav a:hover { background: rgba(255,255,255,0.18); }
+
+    .hero { text-align: center; padding: 70px 16px 40px; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 8px 16px; border-radius: 999px; font-weight: 600; font-size: .9rem;
+      background: var(--glass); border: 1px solid var(--glass-brd); backdrop-filter: blur(8px);
+    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: #51cf66;
+           box-shadow: 0 0 0 0 rgba(81,207,102,.7); animation: pulse 1.8s infinite; }
+    @keyframes pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(81,207,102,.7); }
+      70%  { box-shadow: 0 0 0 12px rgba(81,207,102,0); }
+      100% { box-shadow: 0 0 0 0 rgba(81,207,102,0); }
+    }
+    .hero h1 {
+      font-size: clamp(2.6rem, 7vw, 4.8rem); line-height: 1.05; margin: 22px 0 14px;
+      text-shadow: 0 6px 30px rgba(0,0,0,0.25); font-weight: 800;
+    }
+    .hero p.sub { font-size: clamp(1.05rem, 2.4vw, 1.4rem); opacity: .95; max-width: 640px; margin: 0 auto; }
+    .cta { margin-top: 32px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .btn {
+      padding: 14px 28px; border-radius: 14px; font-weight: 700; font-size: 1rem;
+      text-decoration: none; color: #2b2b2b; background: #fff;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2); transition: transform .15s, box-shadow .15s;
+    }
+    .btn:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(0,0,0,0.28); }
+    .btn.ghost { background: var(--glass); color: #fff; border: 1px solid var(--glass-brd); }
+
+    .grid { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-top: 56px; }
+    .card {
+      background: var(--glass); border: 1px solid var(--glass-brd); backdrop-filter: blur(10px);
+      border-radius: 18px; padding: 26px 22px; transition: transform .18s, background .18s;
+    }
+    .card:hover { transform: translateY(-5px); background: rgba(255,255,255,0.18); }
+    .card .ico { font-size: 2rem; }
+    .card h3 { margin: 12px 0 6px; font-size: 1.15rem; }
+    .card p { opacity: .9; font-size: .95rem; line-height: 1.5; }
+
+    .live {
+      margin-top: 48px; border-radius: 18px; padding: 22px 24px;
+      background: var(--glass); border: 1px solid var(--glass-brd); backdrop-filter: blur(10px);
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: space-between;
+    }
+    .live code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .95rem; opacity: .95; }
+
+    footer { text-align: center; margin-top: 56px; opacity: .85; font-size: .9rem; line-height: 1.7; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <nav>
+      <div class="brand">rashone<span>.demo</span></div>
+      <div>
+        <a href="/">Home</a>
+        <a href="/stack.html">The Stack</a>
+        <a href="/api/greeting">API</a>
+      </div>
+    </nav>
+
+    <header class="hero">
+      <div class="pill"><span class="dot"></span> Live on AWS ECS Fargate</div>
+      <h1>Good Morning ☀️</h1>
+      <p class="sub">Welcome to the Rashone demo — a Spring Boot service shipped in a container,
+         delivered through an automated CI/CD pipeline, and served to the world behind an
+         Application Load Balancer.</p>
+      <div class="cta">
+        <a class="btn" href="/stack.html">Explore the Stack →</a>
+        <a class="btn ghost" href="/api/greeting">View the live API</a>
+      </div>
+    </header>
+
+    <section class="grid">
+      <div class="card">
+        <div class="ico">🐳</div>
+        <h3>Containerized</h3>
+        <p>Multi-stage Docker build on a hardened, non-root Alpine JRE image.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🚀</div>
+        <h3>ECS Fargate</h3>
+        <p>Serverless containers — no servers to patch, scales on demand.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🌐</div>
+        <h3>Load Balanced</h3>
+        <p>An Application Load Balancer fronts every request with health checks.</p>
+      </div>
+      <div class="card">
+        <div class="ico">⚙️</div>
+        <h3>CI/CD Pipeline</h3>
+        <p>Push to <code>main</code> → scan → build → ECR → rolling deploy.</p>
+      </div>
+    </section>
+
+    <section class="live">
+      <div>
+        <strong>Live backend response</strong><br />
+        <code id="api-out">GET /api/greeting …</code>
+      </div>
+      <span class="pill"><span class="dot"></span> <span id="api-status">checking…</span></span>
+    </section>
+
+    <footer>
+      <div>Served by Spring Boot on AWS ECS Fargate · behind an Application Load Balancer</div>
+      <div>© Rashone Demo — Good Morning, and welcome aboard.</div>
+    </footer>
+  </div>
+
+  <script>
+    // Progressive enhancement only — the page is fully meaningful without JS.
+    fetch('/api/greeting')
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        document.getElementById('api-out').textContent = JSON.stringify(d);
+        document.getElementById('api-status').textContent = d.status || 'UP';
+      })
+      .catch(function () {
+        document.getElementById('api-status').textContent = 'offline';
+      });
+  </script>
+</body>
+</html>
