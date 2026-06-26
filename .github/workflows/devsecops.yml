@@ -281,7 +281,7 @@ jobs:
     # gate the push. It runs in parallel and uploads its report regardless.
     # build-and-test is the only hard gate (SAST runs but never fails the build).
     needs: [sast, build-and-test]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     permissions:
       contents: read
     outputs:
@@ -337,7 +337,7 @@ jobs:
     # Skips cleanly until ECS exists. Secrets can't be read in a job-level `if:`, so the
     # switch is the repo VARIABLE `DEPLOY_ENABLED`. Leave it unset to only seed ECR;
     # set it to `true` (Variables tab) after Phase 3 to turn on rolling deploys.
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.DEPLOY_ENABLED == 'true'
     # Tie to the "production" GitHub environment to enable manual approval gates
     # and environment-scoped secrets if needed.
     environment: production
@@ -385,7 +385,7 @@ jobs:
     needs: [deploy]
     # Same switch as deploy: only runs when the DEPLOY_ENABLED variable is `true`
     # (and, via `needs: [deploy]`, only after a deploy actually ran).
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.DEPLOY_ENABLED == 'true'
     permissions:
       contents: read
 
