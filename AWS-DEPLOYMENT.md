@@ -64,17 +64,19 @@ The app (`RestController.java`) only uses basic Spring MVC (`@RestController`,
 
 The workflow triggers on push/PR to `main`. Jobs:
 
-1. **SAST** — Semgrep → HTML artifact
-2. **SCA** — OWASP Dependency Check → HTML artifact
-3. **Build & Test** — Maven `verify` + JUnit → HTML artifact + JAR
-4. **Container Scan** — Trivy image scan → HTML artifact
-5. **Push to ECR** — only on push to `main`, after gates pass
-6. **Deploy to ECS** — rolling update, waits for service stability
-7. **Post-Deploy Validation** — smoke test hits `APP_URL/`, expects `200` + body
+1. **SAST** — Semgrep → HTML artifact (informational)
+2. **Build & Test** — Maven `verify` + JUnit → HTML artifact + JAR (**hard gate**)
+3. **Container Scan** — Trivy image scan → HTML artifact (**informational** — runs in
+   parallel, never blocks the push)
+4. **Push to ECR** — only on push to `main`, after build completes
+5. **Deploy to ECS** — rolling update, waits for service stability
+6. **Post-Deploy Validation** — smoke test hits `APP_URL/`, expects `200` + body
    containing `Good Morning`
 
-> Jobs 5–7 run **only** on `push` to `main` (not on PRs).
-> Job 6 uses a GitHub environment named **`production`** — create it (or remove the
+> SCA (OWASP Dependency Check) was **removed** — without an `NVD_API_KEY` its NVD
+> download burned free Actions minutes for little value on a 1-day demo.
+> Jobs 4–6 run **only** on `push` to `main` (not on PRs).
+> Job 5 uses a GitHub environment named **`production`** — create it (or remove the
 > `environment: production` line) or the deploy job won't run.
 
 ---

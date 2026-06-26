@@ -2,13 +2,12 @@
 # DevSecOps CI/CD Pipeline — Spring Boot Demo (com.rashone)
 #
 # Pipeline stages
-#   1. SAST        — Semgrep static analysis            → HTML artifact
-#   2. SCA         — OWASP Dependency Check              → HTML artifact
-#   3. Build & Test— Maven build + JUnit                 → HTML artifact
-#   4. Image Scan  — Trivy container vulnerability scan  → HTML artifact
-#   5. Push to ECR — Tag and push verified image
-#   6. Deploy      — ECS rolling update (wait for stable)
-#   7. Validate    — Smoke test + HTML validation report → HTML artifact
+#   1. SAST        — Semgrep static analysis            → HTML artifact (informational)
+#   2. Build & Test— Maven build + JUnit                 → HTML artifact (hard gate)
+#   3. Image Scan  — Trivy container vulnerability scan  → HTML artifact (informational)
+#   4. Push to ECR — Tag and push verified image
+#   5. Deploy      — ECS rolling update (wait for stable)
+#   6. Validate    — Smoke test + HTML validation report → HTML artifact
 #
 # Required GitHub Secrets  (Settings → Secrets and variables → Actions → Secrets)
 #   AWS_ACCESS_KEY_ID        IAM access key with ECR push + ECS deploy permissions
@@ -163,53 +162,9 @@ jobs:
           retention-days: 30
 
 # ─────────────────────────────────────────────────────────────────────────────
-# JOB 2 — SCA: OWASP Dependency Check
-# ─────────────────────────────────────────────────────────────────────────────
-  sca:
-    name: "SCA — OWASP Dependency Check"
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Java ${{ env.JAVA_VERSION }}
-        uses: actions/setup-java@v4
-        with:
-          java-version: ${{ env.JAVA_VERSION }}
-          distribution: temurin
-          cache: maven
-
-      - name: Cache OWASP NVD database
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository/org/owasp/dependency-check-data
-          key: owasp-nvd-${{ runner.os }}-${{ hashFiles('**/pom.xml') }}
-          restore-keys: owasp-nvd-${{ runner.os }}-
-
-      - name: Run OWASP Dependency Check
-        # failBuildOnCVSS=10 means the step never fails the job (CVSS max is 10);
-        # Change to 9 to break the build on critical CVEs.
-        run: |
-          ./mvnw org.owasp:dependency-check-maven:check \
-            -DfailBuildOnCVSS=10 \
-            -Dformat=HTML \
-            -DoutputDirectory=owasp-report \
-            --no-transfer-progress \
-            || true
-
-      - name: Upload SCA report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: report-sca-owasp
-          path: owasp-report/dependency-check-report.html
-          retention-days: 30
-
-# ─────────────────────────────────────────────────────────────────────────────
-# JOB 3 — Build & Unit Tests
+# JOB 2 — Build & Unit Tests
+#   (SCA / OWASP Dependency Check was removed — the NVD download with no API key
+#    burned free Actions minutes for little value on a throwaway demo.)
 # ─────────────────────────────────────────────────────────────────────────────
   build-and-test:
     name: "Build & Test"
@@ -253,12 +208,15 @@ jobs:
           retention-days: 1
 
 # ─────────────────────────────────────────────────────────────────────────────
-# JOB 4 — Container image build + Trivy vulnerability scan
+# JOB 3 — Container image build + Trivy vulnerability scan
 # ─────────────────────────────────────────────────────────────────────────────
   container-scan:
-    name: "Container Scan — Trivy"
+    name: "Container Scan — Trivy (informational)"
     runs-on: ubuntu-latest
     needs: [build-and-test]
+    # Informational gate: report vulnerabilities but never block the pipeline.
+    # A failure here (scan tooling or findings) does not fail the run or stop push-to-ecr.
+    continue-on-error: true
     permissions:
       contents: read
 
@@ -274,7 +232,9 @@ jobs:
         with:
           context: .
           push: false
-          tags: ${{ vars.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+          # Local-only tag for scanning; independent of the ECR_REPOSITORY variable
+          # (which isn't needed here and may be unset early on).
+          tags: demo:${{ env.IMAGE_TAG }}
           load: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -300,7 +260,7 @@ jobs:
             --output trivy-report.html \
             --severity CRITICAL,HIGH,MEDIUM \
             --exit-code 0 \
-            ${{ vars.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            demo:${{ env.IMAGE_TAG }}
 
       - name: Upload Trivy report
         uses: actions/upload-artifact@v4
@@ -311,13 +271,16 @@ jobs:
           retention-days: 30
 
 # ─────────────────────────────────────────────────────────────────────────────
-# JOB 5 — Push verified image to AWS ECR
+# JOB 4 — Push verified image to AWS ECR
 # Runs only on pushes to main after all security gates pass.
 # ─────────────────────────────────────────────────────────────────────────────
   push-to-ecr:
     name: "Push to AWS ECR"
     runs-on: ubuntu-latest
-    needs: [sast, sca, build-and-test, container-scan]
+    # container-scan is intentionally NOT a dependency — it's informational and must never
+    # gate the push. It runs in parallel and uploads its report regardless.
+    # build-and-test is the only hard gate (SAST runs but never fails the build).
+    needs: [sast, build-and-test]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     permissions:
       contents: read
@@ -364,7 +327,7 @@ jobs:
             >> $GITHUB_OUTPUT
 
 # ─────────────────────────────────────────────────────────────────────────────
-# JOB 6 — Deploy to AWS ECS
+# JOB 5 — Deploy to AWS ECS
 # Uses the production environment for required approval gate (optional).
 # ─────────────────────────────────────────────────────────────────────────────
   deploy:
@@ -413,7 +376,7 @@ jobs:
           wait-for-service-stability: true
 
 # ─────────────────────────────────────────────────────────────────────────────
-# JOB 7 — Post-deploy smoke tests & validation report
+# JOB 6 — Post-deploy smoke tests & validation report
 # ─────────────────────────────────────────────────────────────────────────────
   validate:
     name: "Post-Deploy Validation"
