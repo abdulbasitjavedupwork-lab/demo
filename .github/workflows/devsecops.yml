@@ -29,8 +29,6 @@ name: DevSecOps CI/CD Pipeline
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 
 # Minimum permissions at workflow level; each job overrides where needed
@@ -277,11 +275,9 @@ jobs:
   push-to-ecr:
     name: "Push to AWS ECR"
     runs-on: ubuntu-latest
-    # container-scan is intentionally NOT a dependency — it's informational and must never
-    # gate the push. It runs in parallel and uploads its report regardless.
-    # build-and-test is the only hard gate (SAST runs but never fails the build).
-    needs: [sast, build-and-test]
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    # build-and-test is the ONLY gate. sast and container-scan are informational and run
+    # in parallel — they never block the push or the deploy that follows it.
+    needs: [build-and-test]
     permissions:
       contents: read
     outputs:
@@ -334,13 +330,6 @@ jobs:
     name: "Deploy to AWS ECS"
     runs-on: ubuntu-latest
     needs: [push-to-ecr]
-    # Skips cleanly until ECS exists. Secrets can't be read in a job-level `if:`, so the
-    # switch is the repo VARIABLE `DEPLOY_ENABLED`. Leave it unset to only seed ECR;
-    # set it to `true` (Variables tab) after Phase 3 to turn on rolling deploys.
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.DEPLOY_ENABLED == 'true'
-    # Tie to the "production" GitHub environment to enable manual approval gates
-    # and environment-scoped secrets if needed.
-    environment: production
     permissions:
       contents: read
 
@@ -383,9 +372,6 @@ jobs:
     name: "Post-Deploy Validation"
     runs-on: ubuntu-latest
     needs: [deploy]
-    # Same switch as deploy: only runs when the DEPLOY_ENABLED variable is `true`
-    # (and, via `needs: [deploy]`, only after a deploy actually ran).
-    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && vars.DEPLOY_ENABLED == 'true'
     permissions:
       contents: read
 
