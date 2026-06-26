@@ -296,7 +296,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -311,8 +311,8 @@ jobs:
           context: .
           push: true
           tags: |
-            ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
-            ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY }}:latest
+            ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+            ${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           labels: |
@@ -323,7 +323,7 @@ jobs:
       - name: Export image URI as job output
         id: set-output
         run: |
-          echo "image-uri=${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}" \
+          echo "image-uri=${{ secrets.ECR_REGISTRY }}/${{ secrets.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}" \
             >> $GITHUB_OUTPUT
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -334,9 +334,10 @@ jobs:
     name: "Deploy to AWS ECS"
     runs-on: ubuntu-latest
     needs: [push-to-ecr]
-    # Skips cleanly until ECS exists. Set the ECS_CLUSTER variable (after Phase 3)
-    # to activate deploys; until then a push only seeds the image into ECR.
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.ECS_CLUSTER != ''
+    # Skips cleanly until ECS exists. Secrets can't be read in a job-level `if:`, so the
+    # switch is the repo VARIABLE `DEPLOY_ENABLED`. Leave it unset to only seed ECR;
+    # set it to `true` (Variables tab) after Phase 3 to turn on rolling deploys.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
     # Tie to the "production" GitHub environment to enable manual approval gates
     # and environment-scoped secrets if needed.
     environment: production
@@ -349,12 +350,12 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Download current ECS task definition
         run: |
           aws ecs describe-task-definition \
-            --task-definition ${{ vars.ECS_TASK_DEFINITION }} \
+            --task-definition ${{ secrets.ECS_TASK_DEFINITION }} \
             --query taskDefinition \
             > task-definition.json
 
@@ -363,15 +364,15 @@ jobs:
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
           task-definition: task-definition.json
-          container-name: ${{ vars.CONTAINER_NAME }}
+          container-name: ${{ secrets.CONTAINER_NAME }}
           image: ${{ needs.push-to-ecr.outputs.image-uri }}
 
       - name: Register and deploy new task definition to ECS
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: ${{ vars.ECS_SERVICE }}
-          cluster: ${{ vars.ECS_CLUSTER }}
+          service: ${{ secrets.ECS_SERVICE }}
+          cluster: ${{ secrets.ECS_CLUSTER }}
           # Block until the service reaches a steady state before proceeding
           wait-for-service-stability: true
 
@@ -382,8 +383,9 @@ jobs:
     name: "Post-Deploy Validation"
     runs-on: ubuntu-latest
     needs: [deploy]
-    # Only runs once a deploy target (APP_URL) is configured.
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.APP_URL != ''
+    # Same switch as deploy: only runs when the DEPLOY_ENABLED variable is `true`
+    # (and, via `needs: [deploy]`, only after a deploy actually ran).
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && vars.DEPLOY_ENABLED == 'true'
     permissions:
       contents: read
 
@@ -391,7 +393,7 @@ jobs:
       - name: Run smoke tests
         id: smoke
         env:
-          APP_URL: ${{ vars.APP_URL }}
+          APP_URL: ${{ secrets.APP_URL }}
         run: |
           MAX_RETRIES=12
           RETRY_WAIT=15
@@ -442,7 +444,7 @@ jobs:
       - name: Generate validation HTML report
         if: always()
         env:
-          APP_URL: ${{ vars.APP_URL }}
+          APP_URL: ${{ secrets.APP_URL }}
         run: |
           python3 - <<'PYEOF'
           import os, datetime, html

@@ -85,15 +85,16 @@ The workflow triggers on push/PR to `main`. Jobs:
 
 **Settings → Secrets and variables → Actions**
 
+> **Config is read from Secrets, not Variables.** The workflow uses `secrets.*` for all
+> config values (region/registry/repo/ECS), because they were stored in the Secrets tab.
+> The single exception is `DEPLOY_ENABLED`, which must be a **Variable** — GitHub doesn't
+> allow `secrets.*` inside a job-level `if:`.
+
 ### Secrets (tab: *Secrets*)
 | Name | Value |
 |------|-------|
 | `AWS_ACCESS_KEY_ID` | your **rotated** IAM access key |
 | `AWS_SECRET_ACCESS_KEY` | matching secret |
-
-### Variables (tab: *Variables*)
-| Name | Example value for this demo |
-|------|------------------------------|
 | `AWS_REGION` | `us-east-1` |
 | `ECR_REGISTRY` | `535181393425.dkr.ecr.us-east-1.amazonaws.com` |
 | `ECR_REPOSITORY` | `demo` |
@@ -103,8 +104,14 @@ The workflow triggers on push/PR to `main`. Jobs:
 | `CONTAINER_NAME` | `demo` (must match the container name in the task def) |
 | `APP_URL` | `http://<your-alb-dns>.us-east-1.elb.amazonaws.com` |
 
-> The ECS-related variables (`ECS_*`, `CONTAINER_NAME`, `APP_URL`) only matter once the
-> ECS resources exist — see Phase 3/4. You can add them after the first ECR seed.
+### Variables (tab: *Variables*)
+| Name | Value | When |
+|------|-------|------|
+| `DEPLOY_ENABLED` | *(leave unset)* → set to `true` | Set to `true` **only after** ECS exists (Phase 3). Until then, Deploy/Validate skip and a push only seeds ECR. |
+
+> The ECS-related secrets (`ECS_*`, `CONTAINER_NAME`, `APP_URL`) only matter once the ECS
+> resources exist — see Phase 3/4. The image seed needs just the two AWS keys plus
+> `AWS_REGION`, `ECR_REGISTRY`, `ECR_REPOSITORY`.
 
 ---
 
@@ -166,12 +173,14 @@ ECS needs an existing image before you can create a task definition pointing at 
 
 ## Phase 4 — Wire ECS back into the pipeline
 
-1. Add the remaining **Variables**: `ECS_CLUSTER`, `ECS_SERVICE`,
-   `ECS_TASK_DEFINITION`, `CONTAINER_NAME`, and `APP_URL` (the ALB DNS, with
-   `http://` prefix, no trailing slash).
-2. Create the **`production`** GitHub environment (Settings → Environments) — or delete
+1. Confirm the ECS **Secrets** hold real values: `ECS_CLUSTER`, `ECS_SERVICE`,
+   `ECS_TASK_DEFINITION`, `CONTAINER_NAME`, and `APP_URL` (the ALB DNS, with `http://`
+   prefix, no trailing slash). Update `APP_URL` to the actual ALB DNS from Phase 3.
+2. Set the **Variable** `DEPLOY_ENABLED` = `true` (Variables tab) to turn on the Deploy
+   and Validate jobs.
+3. Create the **`production`** GitHub environment (Settings → Environments) — or delete
    the `environment: production` line in the workflow.
-3. Push any small change to `main` to prove the full loop:
+4. Push any small change to `main` to prove the full loop:
    `git push` → ECR → ECS rolling update → smoke test passes.
 
 ---
