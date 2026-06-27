@@ -17,7 +17,7 @@ public class RestController {
     @GetMapping("/api/greeting")
     public Map<String, String> greeting() {
         return Map.of(
-                "message", "Hello Rashone 222, Good Morning",
+                "message", "Hello Rashone 224, Good Morning",
                 "service", "demo",
                 "platform", "AWS ECS Fargate",
                 "status", "UP"
